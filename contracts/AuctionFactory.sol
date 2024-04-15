@@ -8,7 +8,12 @@ import "./VickreyAuction.sol";
 contract AuctionFactory {
     address[] public auctions;
 
+    event FactoryCreated(address indexed factoryAddress);
     event AuctionCreated(address indexed auctionAddress, address indexed owner, string auctionType);
+
+    constructor() {
+        emit FactoryCreated(address(this));
+    }
 
     function createBlindAuction(
         address _beneficiary,
