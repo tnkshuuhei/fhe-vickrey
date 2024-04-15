@@ -49,7 +49,13 @@ contract VickreyAuction is Reencrypt {
 
     event Winner(address who);
 
-    constructor(address _beneficiary, EncryptedERC20 _tokenContract, uint biddingTime, bool isStoppable) {
+    constructor(
+        address _beneficiary,
+        EncryptedERC20 _tokenContract,
+        address _contractOwner,
+        uint biddingTime,
+        bool isStoppable
+    ) {
         beneficiary = _beneficiary;
         tokenContract = _tokenContract;
         endTime = block.timestamp + biddingTime;
@@ -57,7 +63,7 @@ contract VickreyAuction is Reencrypt {
         tokenTransferred = false;
         bidCounter = 0;
         stoppable = isStoppable;
-        contractOwner = msg.sender;
+        contractOwner = _contractOwner;
     }
 
     // Bid an `encryptedValue`.
@@ -122,7 +128,7 @@ contract VickreyAuction is Reencrypt {
 
         objectClaimed = canClaim;
         bids[msg.sender] = TFHE.select(canClaim, TFHE.asEuint64(0), bids[msg.sender]);
-        // emit Winner(msg.sender);
+        emit Winner(msg.sender);
     }
 
     // Transfer token to beneficiary
@@ -130,9 +136,10 @@ contract VickreyAuction is Reencrypt {
         require(!tokenTransferred);
 
         tokenTransferred = true;
-        tokenContract.transfer(beneficiary, highestBid);
+        tokenContract.transfer(beneficiary, secondHighestBid);
     }
 
+    // TODO: Enable the Auction winner to withdraw HighestBid - SecondHighestBid
     // Withdraw a bid from the auction to the caller once the auction has stopped.
     function withdraw() public onlyAfterEnd {
         euint64 bidValue = bids[msg.sender];

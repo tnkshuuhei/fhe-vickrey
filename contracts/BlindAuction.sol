@@ -46,7 +46,13 @@ contract BlindAuction is Reencrypt {
 
     event Winner(address who);
 
-    constructor(address _beneficiary, EncryptedERC20 _tokenContract, uint biddingTime, bool isStoppable) {
+    constructor(
+        address _beneficiary,
+        EncryptedERC20 _tokenContract,
+        address _contractOwner,
+        uint biddingTime,
+        bool isStoppable
+    ) {
         beneficiary = _beneficiary;
         tokenContract = _tokenContract;
         endTime = block.timestamp + biddingTime;
@@ -54,7 +60,7 @@ contract BlindAuction is Reencrypt {
         tokenTransferred = false;
         bidCounter = 0;
         stoppable = isStoppable;
-        contractOwner = msg.sender;
+        contractOwner = _contractOwner;
     }
 
     // Bid an `encryptedValue`.
