@@ -8,7 +8,7 @@ import { deployBlindAuctionFixture } from "./BlindAuction.fixture";
 
 describe("BlindAuction", function () {
   before(async function () {
-    await initSigners(3);
+    await initSigners();
     this.signers = await getSigners();
   });
 
@@ -23,7 +23,13 @@ describe("BlindAuction", function () {
     const transaction = await this.erc20.mint(1000);
 
     // Deploy blind auction
-    const contractPromise = deployBlindAuctionFixture(this.signers.alice, this.contractERC20Address, 1000000, true);
+    const contractPromise = deployBlindAuctionFixture(
+      this.signers.alice,
+      this.contractERC20Address,
+      this.signers.alice.address,
+      1000000,
+      true,
+    );
 
     const [contract] = await Promise.all([contractPromise, transaction.wait()]);
 
