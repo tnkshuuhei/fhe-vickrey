@@ -6,7 +6,7 @@ import "fhevm/lib/TFHE.sol";
 import "fhevm/abstracts/Reencrypt.sol";
 import "./EncryptedERC20.sol";
 
-contract BlindAuction is Reencrypt {
+contract VickreyAuction is Reencrypt {
     uint public endTime;
 
     // the person get the highest bid after the auction ends
@@ -14,6 +14,9 @@ contract BlindAuction is Reencrypt {
 
     // Current highest bid.
     euint64 internal highestBid;
+
+    // Current second highest bid.
+    euint64 internal secondHighestBid;
 
     // Mapping from bidder to their bid value.
     mapping(address => euint64) public bids;
@@ -76,10 +79,14 @@ contract BlindAuction is Reencrypt {
             tokenContract.transferFrom(msg.sender, address(this), value);
         }
         euint64 currentBid = bids[msg.sender];
-        if (!TFHE.isInitialized(highestBid)) {
+
+        if (!TFHE.isInitialized(highestBid) && !TFHE.isInitialized(secondHighestBid)) {
             highestBid = currentBid;
         } else {
-            highestBid = TFHE.select(TFHE.lt(highestBid, currentBid), currentBid, highestBid);
+            euint64 currentHighestBid = highestBid;
+            // If the current bid is higher than the current highest bid, update the highest to the current bid and the second highest to the previous highest bid
+            highestBid = TFHE.select(TFHE.lt(currentHighestBid, currentBid), currentBid, currentHighestBid);
+            secondHighestBid = TFHE.select(TFHE.lt(currentHighestBid, currentBid), highestBid, currentBid);
         }
     }
 
