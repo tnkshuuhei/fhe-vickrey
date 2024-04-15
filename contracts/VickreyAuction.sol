@@ -47,7 +47,7 @@ contract VickreyAuction is Reencrypt {
     // It cannot be called after `time`.
     error TooLate(uint time);
 
-    event Winner(address who);
+    event AuctionEnded(euint64 indexed highestBid, euint64 indexed secondHighestBid);
 
     constructor(
         address _beneficiary,
@@ -122,31 +122,44 @@ contract VickreyAuction is Reencrypt {
         }
     }
 
-    // Claim the object. Succeeds only if the caller has the highest bid.
-    function claim() public onlyAfterEnd {
-        ebool canClaim = TFHE.and(TFHE.le(highestBid, bids[msg.sender]), TFHE.not(objectClaimed));
-
-        objectClaimed = canClaim;
-        bids[msg.sender] = TFHE.select(canClaim, TFHE.asEuint64(0), bids[msg.sender]);
-        emit Winner(msg.sender);
-    }
-
     // Transfer token to beneficiary
     function auctionEnd() public onlyAfterEnd {
         require(!tokenTransferred);
 
         tokenTransferred = true;
         tokenContract.transfer(beneficiary, secondHighestBid);
+        emit AuctionEnded(highestBid, secondHighestBid);
     }
 
-    // TODO: Enable the Auction winner to withdraw HighestBid - SecondHighestBid
+    // Claim the object. Succeeds only if the caller has the highest bid.
+    function claim() public onlyAfterEnd {
+        ebool canClaim = TFHE.and(TFHE.le(highestBid, bids[msg.sender]), TFHE.not(objectClaimed));
+
+        // if the caller has the highest bid and not claimed, then claim the object
+        // and set the objectClaimed to true
+        objectClaimed = canClaim;
+        // TODO: transfer token or NFT or something to the winner
+
+        // Update the bid to the difference between the highest and second highest bid
+        // if the caller has the highest bid, otherwise keep the bid value as is
+        bids[msg.sender] = TFHE.select(canClaim, highestBid - secondHighestBid, bids[msg.sender]);
+
+        // call the withdraw function to transfer the bid value to the caller
+        _withdraw();
+    }
+
     // Withdraw a bid from the auction to the caller once the auction has stopped.
-    function withdraw() public onlyAfterEnd {
+    function _withdraw() internal onlyAfterEnd {
         euint64 bidValue = bids[msg.sender];
-        ebool isHighestBid = TFHE.eq(bidValue, highestBid);
-        ebool canWithdraw = TFHE.not(TFHE.and(isHighestBid, TFHE.not(objectClaimed)));
-        tokenContract.transfer(msg.sender, TFHE.select(canWithdraw, bidValue, TFHE.asEuint64(0)));
-        bids[msg.sender] = TFHE.select(canWithdraw, TFHE.asEuint64(0), bids[msg.sender]);
+
+        // Update the bid mapping to 0
+        bids[msg.sender] = TFHE.asEuint64(0);
+
+        // Transfer the bid value to the caller
+        bool isTransferd = tokenContract.transfer(msg.sender, bidValue);
+
+        // Revert if the transfer failed
+        require(isTransferd, "Transfer failed");
     }
 
     modifier onlyBeforeEnd() {
