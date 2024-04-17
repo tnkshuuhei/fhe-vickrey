@@ -47,7 +47,128 @@ describe("Vickrey Auction", function () {
     this.instances = instances;
   });
 
-  it("should check Carol won the bid", async function () {
+  it("should bid the auction", async function () {
+    const bobBidAmount = this.instances.bob.encrypt64(10);
+    const carolBidAmount = this.instances.carol.encrypt64(20);
+
+    // To be able to bid, we give approbation to
+    // the blind auction to spend tokens on Bob's and Carol's behalf.
+    const txeBobApprove = await this.erc20
+      .connect(this.signers.bob)
+      ["approve(address,bytes)"](this.contractAddress, bobBidAmount);
+    const txCarolApprove = await this.erc20
+      .connect(this.signers.carol)
+      ["approve(address,bytes)"](this.contractAddress, carolBidAmount);
+    await Promise.all([txeBobApprove.wait(), txCarolApprove.wait()]);
+
+    const txCarolBid = await this.vickreyAuction.connect(this.signers.carol).bid(carolBidAmount, { gasLimit: 5000000 });
+    const txBobBid = await this.vickreyAuction.connect(this.signers.bob).bid(bobBidAmount, { gasLimit: 5000000 });
+    await Promise.all([txCarolBid.wait(), txBobBid.wait()]);
+
+    // Stop the auction
+    const txAliceStop = await this.vickreyAuction.connect(this.signers.alice).stop();
+    await txAliceStop.wait();
+
+    const tokenCarol = this.instances.carol.getPublicKey(this.contractAddress)!;
+    const carolBidAmountCheckEnc = await this.vickreyAuction
+      .connect(this.signers.carol)
+      .getBid(tokenCarol.publicKey, tokenCarol.signature);
+    const carolBidAmountCheckDec = this.instances.carol.decrypt(this.contractAddress, carolBidAmountCheckEnc);
+    expect(carolBidAmountCheckDec).to.equal(20);
+
+    const tokenBob = this.instances.bob.getPublicKey(this.contractAddress)!;
+    const bobBidAmountCheckEnc = await this.vickreyAuction
+      .connect(this.signers.bob)
+      .getBid(tokenBob.publicKey, tokenBob.signature);
+    const bobBidAmountCheckDec = this.instances.bob.decrypt(this.contractAddress, bobBidAmountCheckEnc);
+    expect(bobBidAmountCheckDec).to.equal(10);
+  });
+
+  it("should carol has highest bid", async function () {
+    const bobBidAmount = this.instances.bob.encrypt64(10);
+    const carolBidAmount = this.instances.carol.encrypt64(20);
+
+    // To be able to bid, we give approbation to
+    // the blind auction to spend tokens on Bob's and Carol's behalf.
+    const txeBobApprove = await this.erc20
+      .connect(this.signers.bob)
+      ["approve(address,bytes)"](this.contractAddress, bobBidAmount);
+    const txCarolApprove = await this.erc20
+      .connect(this.signers.carol)
+      ["approve(address,bytes)"](this.contractAddress, carolBidAmount);
+    await Promise.all([txeBobApprove.wait(), txCarolApprove.wait()]);
+
+    const txCarolBid = await this.vickreyAuction.connect(this.signers.carol).bid(carolBidAmount, { gasLimit: 5000000 });
+    const txBobBid = await this.vickreyAuction.connect(this.signers.bob).bid(bobBidAmount, { gasLimit: 5000000 });
+    await Promise.all([txCarolBid.wait(), txBobBid.wait()]);
+
+    // Stop the auction
+    const txAliceStop = await this.vickreyAuction.connect(this.signers.alice).stop();
+    await txAliceStop.wait();
+
+    const tokenCarol = this.instances.carol.getPublicKey(this.contractAddress)!;
+    const tokenBob = this.instances.bob.getPublicKey(this.contractAddress)!;
+
+    const carolHighestBidEnc = await this.vickreyAuction
+      .connect(this.signers.carol)
+      .doIHaveHighestBid(tokenCarol.publicKey, tokenCarol.signature);
+    const carolHighestBidDec = this.instances.carol.decrypt(this.contractAddress, carolHighestBidEnc);
+    expect(carolHighestBidDec).to.equal(1);
+
+    const bobHighestBidEnc = await this.vickreyAuction
+      .connect(this.signers.bob)
+      .doIHaveHighestBid(tokenBob.publicKey, tokenBob.signature);
+    const bobHighestBidDec = this.instances.bob.decrypt(this.contractAddress, bobHighestBidEnc);
+    expect(bobHighestBidDec).to.equal(0);
+  });
+
+  it("should claim the bid amount", async function () {
+    const bobBidAmount = this.instances.bob.encrypt64(10);
+    const carolBidAmount = this.instances.carol.encrypt64(20);
+
+    // To be able to bid, we give approbation to
+    // the blind auction to spend tokens on Bob's and Carol's behalf.
+    const txeBobApprove = await this.erc20
+      .connect(this.signers.bob)
+      ["approve(address,bytes)"](this.contractAddress, bobBidAmount);
+    const txCarolApprove = await this.erc20
+      .connect(this.signers.carol)
+      ["approve(address,bytes)"](this.contractAddress, carolBidAmount);
+    await Promise.all([txeBobApprove.wait(), txCarolApprove.wait()]);
+
+    const txCarolBid = await this.vickreyAuction.connect(this.signers.carol).bid(carolBidAmount, { gasLimit: 5000000 });
+    const txBobBid = await this.vickreyAuction.connect(this.signers.bob).bid(bobBidAmount, { gasLimit: 5000000 });
+    await Promise.all([txCarolBid.wait(), txBobBid.wait()]);
+
+    // Stop the auction
+    const txAliceStop = await this.vickreyAuction.connect(this.signers.alice).stop();
+    await txAliceStop.wait();
+
+    const txCarolClaim = await this.vickreyAuction.connect(this.signers.carol).claim();
+    await txCarolClaim.wait();
+    const instance = await createInstances(this.contractERC20Address, ethers, this.signers);
+    const tokenCarol = instance.carol.getPublicKey(this.contractERC20Address)!;
+
+    const encryptedBalanceCarol = await this.erc20
+      .connect(this.signers.carol)
+      .balanceOf(this.signers.carol, tokenCarol.publicKey, tokenCarol.signature);
+
+    const balanceCarol = instance.carol.decrypt(this.contractERC20Address, encryptedBalanceCarol);
+    expect(balanceCarol).to.equal(100 - 20 + 10);
+
+    const txBobClaim = await this.vickreyAuction.connect(this.signers.bob).claim();
+    await txBobClaim.wait();
+
+    const tokenBob = instance.bob.getPublicKey(this.contractERC20Address)!;
+    const encryptedBalanceBob = await this.erc20
+      .connect(this.signers.bob)
+      .balanceOf(this.signers.bob, tokenBob.publicKey, tokenBob.signature);
+
+    const balanceBob = instance.bob.decrypt(this.contractERC20Address, encryptedBalanceBob);
+    expect(balanceBob).to.equal(100);
+  });
+
+  it("should Carol won the auction", async function () {
     const bobBidAmount = this.instances.bob.encrypt64(10);
     const carolBidAmount = this.instances.carol.encrypt64(20);
 
@@ -73,32 +194,6 @@ describe("Vickrey Auction", function () {
     // Stop the auction
     const txAliceStop = await this.vickreyAuction.connect(this.signers.alice).stop();
     await txAliceStop.wait();
-
-    const tokenCarol = this.instances.carol.getPublicKey(this.contractAddress)!;
-    const carolBidAmountCheckEnc = await this.vickreyAuction
-      .connect(this.signers.carol)
-      .getBid(tokenCarol.publicKey, tokenCarol.signature);
-    const carolBidAmountCheckDec = this.instances.carol.decrypt(this.contractAddress, carolBidAmountCheckEnc);
-    expect(carolBidAmountCheckDec).to.equal(20);
-
-    const tokenBob = this.instances.bob.getPublicKey(this.contractAddress)!;
-    const bobBidAmountCheckEnc = await this.vickreyAuction
-      .connect(this.signers.bob)
-      .getBid(tokenBob.publicKey, tokenBob.signature);
-    const bobBidAmountCheckDec = this.instances.bob.decrypt(this.contractAddress, bobBidAmountCheckEnc);
-    expect(bobBidAmountCheckDec).to.equal(10);
-
-    const carolHighestBidEnc = await this.vickreyAuction
-      .connect(this.signers.carol)
-      .doIHaveHighestBid(tokenCarol.publicKey, tokenCarol.signature);
-    const carolHighestBidDec = this.instances.carol.decrypt(this.contractAddress, carolHighestBidEnc);
-    expect(carolHighestBidDec).to.equal(1);
-
-    const bobHighestBidEnc = await this.vickreyAuction
-      .connect(this.signers.bob)
-      .doIHaveHighestBid(tokenBob.publicKey, tokenBob.signature);
-    const bobHighestBidDec = this.instances.bob.decrypt(this.contractAddress, bobHighestBidEnc);
-    expect(bobHighestBidDec).to.equal(0);
 
     const txCarolClaim = await this.vickreyAuction.connect(this.signers.carol).claim();
     await txCarolClaim.wait();
