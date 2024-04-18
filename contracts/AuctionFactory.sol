@@ -8,6 +8,9 @@ import "./VickreyAuction.sol";
 contract AuctionFactory {
     address[] public auctions;
 
+    BlindAuction[] public blindAuctions;
+    VickreyAuction[] public vickreyAuctions;
+
     event FactoryCreated(address indexed factoryAddress);
     event AuctionCreated(address indexed auctionAddress, address indexed owner, string auctionType);
 
@@ -30,6 +33,7 @@ contract AuctionFactory {
             isStoppable
         );
         auctions.push(address(newAuction));
+        blindAuctions.push(newAuction);
         emit AuctionCreated(address(newAuction), msg.sender, "BlindAuction");
     }
 
@@ -48,6 +52,7 @@ contract AuctionFactory {
             isStoppable
         );
         auctions.push(address(newAuction));
+        vickreyAuctions.push(newAuction);
         emit AuctionCreated(address(newAuction), msg.sender, "VickreyAuction");
     }
 

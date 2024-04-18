@@ -13,13 +13,13 @@ contract VickreyAuction is Reencrypt {
     address public beneficiary;
 
     // Current highest bid.
-    euint64 internal highestBid;
+    euint32 internal highestBid;
 
     // Current second highest bid.
-    euint64 internal secondHighestBid;
+    euint32 internal secondHighestBid;
 
     // Mapping from bidder to their bid value.
-    mapping(address => euint64) public bids;
+    mapping(address => euint32) public bids;
 
     // Number of bid
     uint public bidCounter;
@@ -47,7 +47,7 @@ contract VickreyAuction is Reencrypt {
     // It cannot be called after `time`.
     error TooLate(uint time);
 
-    event AuctionEnded(euint64 indexed highestBid, euint64 indexed secondHighestBid);
+    event AuctionEnded(euint32 indexed highestBid, euint32 indexed secondHighestBid);
 
     constructor(
         address _beneficiary,
@@ -68,31 +68,32 @@ contract VickreyAuction is Reencrypt {
 
     // Bid an `encryptedValue`.
     function bid(bytes calldata encryptedValue) public onlyBeforeEnd {
-        euint64 value = TFHE.asEuint64(encryptedValue);
-        euint64 existingBid = bids[msg.sender];
+        euint32 value = TFHE.asEuint32(encryptedValue);
+        euint32 existingBid = bids[msg.sender];
         if (TFHE.isInitialized(existingBid)) {
             ebool isHigher = TFHE.lt(existingBid, value);
             // Update bid with value
-            bids[msg.sender] = TFHE.select(isHigher, value, existingBid);
+            bids[msg.sender] = TFHE.cmux(isHigher, value, existingBid);
             // Transfer only the difference between existing and value
-            euint64 toTransfer = value - existingBid;
+            euint32 toTransfer = value - existingBid;
             // Transfer only if bid is higher
-            euint64 amount = TFHE.select(isHigher, toTransfer, TFHE.asEuint64(0));
+            euint32 amount = TFHE.cmux(isHigher, toTransfer, TFHE.asEuint32(0));
             tokenContract.transferFrom(msg.sender, address(this), amount);
         } else {
             bidCounter++;
             bids[msg.sender] = value;
             tokenContract.transferFrom(msg.sender, address(this), value);
         }
-        euint64 currentBid = bids[msg.sender];
+        euint32 currentBid = bids[msg.sender];
 
         if (!TFHE.isInitialized(highestBid) && !TFHE.isInitialized(secondHighestBid)) {
             highestBid = currentBid;
         } else {
-            euint64 currentHighestBid = highestBid;
-            // If the current bid is higher than the current highest bid, update the highest to the current bid and the second highest to the previous highest bid
-            highestBid = TFHE.select(TFHE.lt(currentHighestBid, currentBid), currentBid, currentHighestBid);
-            secondHighestBid = TFHE.select(TFHE.lt(currentHighestBid, currentBid), highestBid, currentBid);
+            euint32 currentHighestBid = highestBid;
+            // If the current bid is higher than the current highest bid,
+            // update the highest to the current bid and` the second highest to the previous highest bid
+            highestBid = TFHE.cmux(TFHE.lt(currentHighestBid, currentBid), currentBid, currentHighestBid);
+            secondHighestBid = TFHE.cmux(TFHE.lt(currentHighestBid, currentBid), highestBid, currentBid);
         }
     }
 
@@ -118,7 +119,7 @@ contract VickreyAuction is Reencrypt {
         if (TFHE.isInitialized(highestBid) && TFHE.isInitialized(bids[msg.sender])) {
             return TFHE.reencrypt(TFHE.le(highestBid, bids[msg.sender]), publicKey);
         } else {
-            return TFHE.reencrypt(TFHE.asEuint64(0), publicKey);
+            return TFHE.reencrypt(TFHE.asEuint32(0), publicKey);
         }
     }
 
@@ -142,7 +143,7 @@ contract VickreyAuction is Reencrypt {
 
         // Update the bid to the difference between the highest and second highest bid
         // if the caller has the highest bid, otherwise keep the bid value as is
-        bids[msg.sender] = TFHE.select(canClaim, highestBid - secondHighestBid, bids[msg.sender]);
+        bids[msg.sender] = TFHE.cmux(canClaim, highestBid - secondHighestBid, bids[msg.sender]);
 
         // call the withdraw function to transfer the bid value to the caller
         _withdraw();
@@ -150,10 +151,10 @@ contract VickreyAuction is Reencrypt {
 
     // Withdraw a bid from the auction to the caller once the auction has stopped.
     function _withdraw() internal onlyAfterEnd {
-        euint64 bidValue = bids[msg.sender];
+        euint32 bidValue = bids[msg.sender];
 
         // Update the bid mapping to 0
-        bids[msg.sender] = TFHE.asEuint64(0);
+        bids[msg.sender] = TFHE.asEuint32(0);
 
         // Transfer the bid value to the caller
         bool isTransferd = tokenContract.transfer(msg.sender, bidValue);

@@ -34,7 +34,7 @@ describe("Vickrey Auction", function () {
     const [contract] = await Promise.all([contractPromise, transaction.wait()]);
 
     // Transfer 100 tokens to Bob
-    const encryptedTransferAmount = instance.alice.encrypt64(100);
+    const encryptedTransferAmount = instance.alice.encrypt32(100);
     const tx = await this.erc20["transfer(address,bytes)"](this.signers.bob.address, encryptedTransferAmount);
 
     // Transfer 100 tokens to Carol
@@ -48,8 +48,8 @@ describe("Vickrey Auction", function () {
   });
 
   it("should bid the auction", async function () {
-    const bobBidAmount = this.instances.bob.encrypt64(10);
-    const carolBidAmount = this.instances.carol.encrypt64(20);
+    const bobBidAmount = this.instances.bob.encrypt32(10);
+    const carolBidAmount = this.instances.carol.encrypt32(20);
 
     // To be able to bid, we give approbation to
     // the blind auction to spend tokens on Bob's and Carol's behalf.
@@ -85,8 +85,8 @@ describe("Vickrey Auction", function () {
   });
 
   it("should carol has highest bid", async function () {
-    const bobBidAmount = this.instances.bob.encrypt64(10);
-    const carolBidAmount = this.instances.carol.encrypt64(20);
+    const bobBidAmount = this.instances.bob.encrypt32(10);
+    const carolBidAmount = this.instances.carol.encrypt32(20);
 
     // To be able to bid, we give approbation to
     // the blind auction to spend tokens on Bob's and Carol's behalf.
@@ -123,8 +123,8 @@ describe("Vickrey Auction", function () {
   });
 
   it("should claim the bid amount", async function () {
-    const bobBidAmount = this.instances.bob.encrypt64(10);
-    const carolBidAmount = this.instances.carol.encrypt64(20);
+    const bobBidAmount = this.instances.bob.encrypt32(10);
+    const carolBidAmount = this.instances.carol.encrypt32(20);
 
     // To be able to bid, we give approbation to
     // the blind auction to spend tokens on Bob's and Carol's behalf.
@@ -169,8 +169,8 @@ describe("Vickrey Auction", function () {
   });
 
   it("should Carol won the auction", async function () {
-    const bobBidAmount = this.instances.bob.encrypt64(10);
-    const carolBidAmount = this.instances.carol.encrypt64(20);
+    const bobBidAmount = this.instances.bob.encrypt32(10);
+    const carolBidAmount = this.instances.carol.encrypt32(20);
 
     // To be able to bid, we give approbation to
     // the blind auction to spend tokens on Bob's and Carol's behalf.

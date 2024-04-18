@@ -23,38 +23,29 @@ describe("Auction Factory", function () {
   });
 
   it("should deploy a blind auction", async function () {
-    await factory
+    const tx = await factory
       .connect(this.signers.alice)
       .createBlindAuction(this.signers.alice, this.contractERC20Address, this.signers.alice.address, 1000000, true);
-    await expect(
-      factory.createBlindAuction(
-        this.signers.alice,
-        this.contractERC20Address,
-        this.signers.alice.address,
-        1000000,
-        true,
-      ),
-    ).to.emit(factory, "AuctionCreated");
+    await tx.wait();
+    const auctions: `${string}`[] = await factory.getAuctions();
+    expect(auctions.length).to.equal(1);
+    expect(auctions[0]).to.equal(await factory.blindAuctions(0));
   });
 
   it("should deploy a vickrey auction", async function () {
-    await factory
+    const tx = await factory
       .connect(this.signers.alice)
       .createVickreyAuction(this.signers.alice, this.contractERC20Address, this.signers.alice.address, 1000000, true);
-    await expect(
-      factory.createVickreyAuction(
-        this.signers.alice,
-        this.contractERC20Address,
-        this.signers.alice.address,
-        1000000,
-        true,
-      ),
-    ).to.emit(factory, "AuctionCreated");
+    await tx.wait();
+    const auctions: `${string}`[] = await factory.getAuctions();
+    expect(auctions.length).to.equal(1);
+    expect(auctions[0]).to.equal(await factory.vickreyAuctions(0));
   });
   it("should return the auction address", async function () {
-    await factory
+    const tx = await factory
       .connect(this.signers.alice)
       .createVickreyAuction(this.signers.alice, this.contractERC20Address, this.signers.alice.address, 1000000, true);
+    await tx.wait();
     const auctions: `${string}`[] = await factory.getAuctions();
     expect(auctions.length).to.equal(1);
   });

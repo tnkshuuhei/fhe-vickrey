@@ -71,11 +71,11 @@ devDependencies:
     specifier: ^6.8.0
     version: 6.11.1
   fhevm:
-    specifier: 0.4.0-8
-    version: 0.4.0-8(hardhat@2.22.2)
+    specifier: 0.3.0
+    version: 0.3.0(hardhat@2.22.2)
   fhevmjs:
-    specifier: ^0.4.0
-    version: 0.4.0
+    specifier: ^0.3.2
+    version: 0.3.2
   fs-extra:
     specifier: ^10.1.0
     version: 10.1.0
@@ -1783,27 +1783,17 @@ packages:
       safe-buffer: 5.2.1
     dev: true
 
-  /bech32@1.1.4:
-    resolution: {integrity: sha512-s0IrSOzLlbvX7yp4WBfPITzpAU8sqQcpsmwXDiKwrG4r491vwCO/XpejasRNl0piBMe/DvP4Tz0mIS/X1DPJBQ==}
+  /base64-js@1.5.1:
+    resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
     dev: true
 
-  /bigint-buffer@1.1.5:
-    resolution: {integrity: sha512-trfYco6AoZ+rKhKnxA0hgX0HAbVP/s808/EuDSe2JDzUnCp/xAsli35Orvk67UrTEcwuxZqYZDmfA2RXJgxVvA==}
-    engines: {node: '>= 10.0.0'}
-    requiresBuild: true
-    dependencies:
-      bindings: 1.5.0
+  /bech32@1.1.4:
+    resolution: {integrity: sha512-s0IrSOzLlbvX7yp4WBfPITzpAU8sqQcpsmwXDiKwrG4r491vwCO/XpejasRNl0piBMe/DvP4Tz0mIS/X1DPJBQ==}
     dev: true
 
   /binary-extensions@2.2.0:
     resolution: {integrity: sha512-jDctJ/IVQbZoJykoeHbhXpOlNBqGNcwXJKJog42E5HDPUwQTSdjCHdihjj0DlnheQ7blbT6dHOafNAiS8ooQKA==}
     engines: {node: '>=8'}
-    dev: true
-
-  /bindings@1.5.0:
-    resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
-    dependencies:
-      file-uri-to-path: 1.0.0
     dev: true
 
   /blakejs@1.2.1:
@@ -1895,6 +1885,13 @@ packages:
 
   /buffer-xor@1.0.3:
     resolution: {integrity: sha512-571s0T7nZWK6vB67HI5dyUF7wXiNcfaPPPTl6zYCNApANjIvYJTg7hlud/+cJpdAhS7dVzqMLmfhfHR3rAcOjQ==}
+    dev: true
+
+  /buffer@6.0.3:
+    resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
+    dependencies:
+      base64-js: 1.5.1
+      ieee754: 1.2.1
     dev: true
 
   /bytes@3.1.2:
@@ -2726,8 +2723,8 @@ packages:
       reusify: 1.0.4
     dev: true
 
-  /fhevm@0.4.0-8(hardhat@2.22.2):
-    resolution: {integrity: sha512-EsEgf/1IcxmnX40IA7fwdoYmgSOOYfQzMmXGeKjfMprENeKM0aks1Fbtk9H2reOqMmQPnRNOH1oEiJBaQHqy+A==}
+  /fhevm@0.3.0(hardhat@2.22.2):
+    resolution: {integrity: sha512-+xLuWQ0B0GeO/cPsmEvfW9yUEMIPlYoZ8v26sCjtWHyWzr4WBNHhxbMYxvZiW/hLTJTKCc91hBxGpdQjH4zBWw==}
     dependencies:
       '@openzeppelin/contracts': 5.0.1
       hardhat-preprocessor: 0.1.5(hardhat@2.22.2)
@@ -2735,18 +2732,18 @@ packages:
       - hardhat
     dev: true
 
-  /fhevmjs@0.4.0:
-    resolution: {integrity: sha512-4FEU9B8SYKeikuOycRQzexcTsu2vK89tIzyepIGhQ/d1LzMu84TmfLg5H688CoRUPVbVkRcsaVN13OwzJBKX/w==}
+  /fhevmjs@0.3.2:
+    resolution: {integrity: sha512-/6D8uqlU3UYQRxyQJWxr6F6qjwe5pLvqeIZlp3YRilLytiFEoBQT5bwSbXzQ7UtY7VuTr82BfIUpNlSBItD5ww==}
     hasBin: true
     dependencies:
-      bigint-buffer: 1.1.5
       commander: 11.1.0
       crypto-js: 4.2.0
       ethers: 6.11.1
       libsodium: 0.7.13
       libsodium-wrappers: 0.7.13
-      node-tfhe: 0.5.2
-      tfhe: 0.5.2
+      node-tfhe: 0.4.4
+      sha3: 2.1.4
+      tfhe: 0.4.4
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -2757,10 +2754,6 @@ packages:
     engines: {node: ^10.12.0 || >=12.0.0}
     dependencies:
       flat-cache: 3.2.0
-    dev: true
-
-  /file-uri-to-path@1.0.0:
-    resolution: {integrity: sha512-0Zt+s3L7Vf1biwWZ29aARiVYLx7iMGnEUl9x33fbB/j3jR81u/O2LbqK+Bm1CDSNDKVtJ/YjwY7TUd5SkeLQLw==}
     dev: true
 
   /fill-range@7.0.1:
@@ -3346,6 +3339,10 @@ packages:
       safer-buffer: 2.1.2
     dev: true
 
+  /ieee754@1.2.1:
+    resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
+    dev: true
+
   /ignore@5.3.1:
     resolution: {integrity: sha512-5Fytz/IraMjqpwfd34ke28PTVMjZjJG2MPn5t7OE4eUCUNf8BAa7b5WUS9/Qvr6mwOQS7Mk6vdsMno5he+T8Xw==}
     engines: {node: '>= 4'}
@@ -3864,8 +3861,8 @@ packages:
     hasBin: true
     dev: true
 
-  /node-tfhe@0.5.2:
-    resolution: {integrity: sha512-nASAkO67xV5J/b3xFhYHQd0f7kTd2WAfFqqRvcT3P6JwA2x+Ur7TZfjvZrB1InnqKTxxcYpu9lvcNWDIWLpeLg==}
+  /node-tfhe@0.4.4:
+    resolution: {integrity: sha512-RsJl9Cb0Vf3hZg50zV6NrrG1sfSfh/MobUi11UUsPJ/UJhKlD6RVypZ7SESnCNHob29xv7vCLDr11pa8MA2vNg==}
     dev: true
 
   /nofilter@3.1.0:
@@ -4406,6 +4403,12 @@ packages:
       crypt: 0.0.2
     dev: true
 
+  /sha3@2.1.4:
+    resolution: {integrity: sha512-S8cNxbyb0UGUM2VhRD4Poe5N58gJnJsLJ5vC7FYWGUmGhcsj4++WaIOBFVDxlG0W3To6xBuiRh+i0Qp2oNCOtg==}
+    dependencies:
+      buffer: 6.0.3
+    dev: true
+
   /shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
     engines: {node: '>=8'}
@@ -4714,8 +4717,8 @@ packages:
     resolution: {integrity: sha512-N+8UisAXDGk8PFXP4HAzVR9nbfmVJ3zYLAWiTIoqC5v5isinhr+r5uaO8+7r3BMfuNIufIsA7RdpVgacC2cSpw==}
     dev: true
 
-  /tfhe@0.5.2:
-    resolution: {integrity: sha512-5txOJ80JjbVUTyTteR3KNxzP0lqUV2SWBCLM2vkRHUonKcGp+YZueeC5wtZbL87cKdLKNEZqKzlN6JjZWCKimQ==}
+  /tfhe@0.4.4:
+    resolution: {integrity: sha512-p0PBH/YLfp3ZMVLbjX2AVSlsoRVMI2XYMwAX5CfAFEqy+fbbm/HgqMAJwPjDbusRAiWFDbF8v6o6PTkGlFWn0w==}
     dev: true
 
   /then-request@6.0.2:

@@ -1,4 +1,3 @@
-import { toBufferBE } from "bigint-buffer";
 import { Signer } from "ethers";
 import fhevmjs, { FhevmInstance } from "fhevmjs";
 import { ethers as hethers } from "hardhat";
@@ -7,9 +6,9 @@ import { FHE_LIB_ADDRESS } from "./generated";
 import type { Signers } from "./signers";
 import { FhevmInstances } from "./types";
 
-const HARDHAT_NETWORK = process.env.HARDHAT_NETWORK;
+const network = process.env.HARDHAT_NETWORK;
 
-let publicKey: string | undefined;
+let publicKey: string;
 let chainId: number;
 
 export const createInstances = async (
@@ -33,12 +32,13 @@ export const createInstances = async (
 };
 
 export const createInstance = async (contractAddress: string, account: Signer, ethers: typeof hethers) => {
-  // 1. Get chain id
-  const provider = ethers.provider;
+  if (network !== "hardhat" && (!publicKey || !chainId)) {
+    // 1. Get chain id
+    const provider = ethers.provider;
 
-  const network = await provider.getNetwork();
-  chainId = +network.chainId.toString(); // Need to be a number
-  try {
+    const network = await provider.getNetwork();
+    chainId = +network.chainId.toString(); // Need to be a number
+
     // Get blockchain public key
     const ret = await provider.call({
       to: FHE_LIB_ADDRESS,
@@ -47,20 +47,19 @@ export const createInstance = async (contractAddress: string, account: Signer, e
     });
     const decoded = ethers.AbiCoder.defaultAbiCoder().decode(["bytes"], ret);
     publicKey = decoded[0];
-  } catch (e) {
-    publicKey = undefined;
   }
+  let instance = await fhevmjs.createInstance({ chainId: 31337, publicKey: "0x00" }); // 31337 is hardhat node's default chainId
+  await generatePublicKey(contractAddress, account, instance);
 
-  const instance = await fhevmjs.createInstance({ chainId, publicKey });
-
-  if (HARDHAT_NETWORK === "hardhat") {
+  if (network === "hardhat") {
     instance.encrypt8 = createUintToUint8ArrayFunction(8);
     instance.encrypt16 = createUintToUint8ArrayFunction(16);
     instance.encrypt32 = createUintToUint8ArrayFunction(32);
-    instance.encrypt64 = createUintToUint8ArrayFunction(64);
-    instance.decrypt = (_, hexadecimalString) => BigInt(hexadecimalString);
+    instance.decrypt = (_, hexadecimalString) => Number(BigInt(hexadecimalString));
+  } else {
+    instance = await fhevmjs.createInstance({ chainId, publicKey });
+    await generatePublicKey(contractAddress, account, instance);
   }
-  await generatePublicKey(contractAddress, account, instance);
 
   return instance;
 };
@@ -81,8 +80,17 @@ const generatePublicKey = async (contractAddress: string, signer: Signer, instan
 
 function createUintToUint8ArrayFunction(numBits: number) {
   const numBytes = Math.ceil(numBits / 8);
-  return function (uint: number | bigint) {
-    const buffer = toBufferBE(BigInt(uint), numBytes);
-    return buffer;
+  const maxValue = 2 ** numBits;
+  const totalBytes = 32;
+
+  return function (uint: number) {
+    const value = uint % maxValue;
+    const buffer = new ArrayBuffer(totalBytes);
+    const view = new DataView(buffer);
+    for (let i = 0; i < numBytes; i++) {
+      const byteValue = (value >> (8 * (numBytes - i - 1))) & 0xff;
+      view.setUint8(totalBytes - numBytes + i, byteValue);
+    }
+    return new Uint8Array(buffer);
   };
 }
