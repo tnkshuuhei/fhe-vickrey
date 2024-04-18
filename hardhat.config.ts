@@ -11,7 +11,10 @@ import { resolve } from "path";
 import * as path from "path";
 
 import "./tasks/accounts";
+import "./tasks/deployAuctionFactory";
+import "./tasks/deployBlindAuction";
 import "./tasks/deployERC20";
+import "./tasks/deployVickreyAuction";
 import "./tasks/getEthereumAddress";
 import "./tasks/mint";
 
@@ -118,7 +121,7 @@ const config: HardhatUserConfig = {
       },
     }),
   },
-  defaultNetwork: "local",
+  defaultNetwork: "zama",
   namedAccounts: {
     deployer: 0,
   },
