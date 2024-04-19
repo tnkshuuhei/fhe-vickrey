@@ -59,7 +59,7 @@ devDependencies:
     specifier: ^7.0.3
     version: 7.0.3
   dotenv:
-    specifier: ^16.0.3
+    specifier: ^16.4.5
     version: 16.4.5
   eslint:
     specifier: ^8.28.0
