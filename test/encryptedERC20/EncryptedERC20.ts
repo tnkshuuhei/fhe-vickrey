@@ -43,17 +43,33 @@ describe("EncryptedERC20", function () {
     expect(totalSupply).to.equal(1000);
   });
 
-  it("non-owner should be unable to mint", async function () {
-    if (network.name == "hardhat") {
-      // mocked mode
-      await expect(this.erc20.connect(this.signers.bob).mint(1000))
-        .to.be.revertedWithCustomError(this.erc20, "OwnableUnauthorizedAccount")
-        .withArgs(this.signers.bob.address);
-    } else {
-      // fhevm-mode
-      const tx = await this.erc20.connect(this.signers.bob).mint(1000, { gasLimit: 1_000_000n });
-      await expect(tx.wait()).to.throw;
-    }
+  // it("non-owner should be unable to mint", async function () {
+  //   if (network.name == "hardhat") {
+  //     // mocked mode
+  //     await expect(this.erc20.connect(this.signers.bob).mint(1000))
+  //       .to.be.revertedWithCustomError(this.erc20, "OwnableUnauthorizedAccount")
+  //       .withArgs(this.signers.bob.address);
+  //   } else {
+  //     // fhevm-mode
+  //     const tx = await this.erc20.connect(this.signers.bob).mint(1000, { gasLimit: 1_000_000n });
+  //     await expect(tx.wait()).to.throw;
+  //   }
+  // });
+
+  it("should every user mint tokens", async function () {
+    const transaction = await this.erc20.connect(this.signers.bob).mint(1000);
+    await transaction.wait();
+    // Call the method
+    const token = this.instances.bob.getPublicKey(this.contractAddress) || {
+      signature: "",
+      publicKey: "",
+    };
+    const encryptedBalance = await this.erc20
+      .connect(this.signers.bob)
+      .balanceOf(this.signers.bob, token.publicKey, token.signature);
+    // Decrypt the balance
+    const balance = this.instances.bob.decrypt(this.contractAddress, encryptedBalance);
+    expect(balance).to.equal(1000);
   });
 
   it("should transfer tokens between two users", async function () {

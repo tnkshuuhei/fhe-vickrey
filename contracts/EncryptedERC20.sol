@@ -7,7 +7,7 @@ import "fhevm/abstracts/Reencrypt.sol";
 import "./utils/EncryptedErrors.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 
-contract EncryptedERC20 is Reencrypt, Ownable2Step, EncryptedErrors {
+contract EncryptedERC20 is Reencrypt, EncryptedErrors {
     enum ErrorCodes {
         NO_ERROR,
         UNSUFFICIENT_BALANCE,
@@ -37,10 +37,7 @@ contract EncryptedERC20 is Reencrypt, Ownable2Step, EncryptedErrors {
     // A mapping of the form mapping(owner => mapping(spender => allowance)).
     mapping(address => mapping(address => euint32)) internal allowances;
 
-    constructor(
-        string memory name_,
-        string memory symbol_
-    ) Ownable(msg.sender) EncryptedErrors(uint256(type(ErrorCodes).max) + 1) {
+    constructor(string memory name_, string memory symbol_) EncryptedErrors(uint256(type(ErrorCodes).max) + 1) {
         _name = name_;
         _symbol = symbol_;
     }
@@ -61,7 +58,7 @@ contract EncryptedERC20 is Reencrypt, Ownable2Step, EncryptedErrors {
     }
 
     // Increase owner's balance by the given `mintedAmount`.
-    function mint(uint32 mintedAmount) public virtual onlyOwner {
+    function mint(uint32 mintedAmount) public virtual /* onlyOwner */ {
         _mint(mintedAmount);
     }
 
