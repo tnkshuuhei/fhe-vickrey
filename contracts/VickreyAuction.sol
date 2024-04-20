@@ -5,12 +5,16 @@ pragma solidity ^0.8.20;
 import "fhevm/lib/TFHE.sol";
 import "fhevm/abstracts/Reencrypt.sol";
 import "./EncryptedERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract VickreyAuction is Reencrypt {
     uint public endTime;
 
     // the person get the highest bid after the auction ends
     address public beneficiary;
+
+    IERC721 public nft;
+    uint256 public nftId;
 
     // Current highest bid.
     euint32 internal highestBid;
@@ -50,12 +54,16 @@ contract VickreyAuction is Reencrypt {
     event AuctionEnded(euint32 indexed highestBid, euint32 indexed secondHighestBid);
 
     constructor(
+        address _nft,
+        uint256 _nftId,
         address _beneficiary,
         EncryptedERC20 _tokenContract,
         address _contractOwner,
         uint biddingTime,
         bool isStoppable
     ) {
+        nft = IERC721(_nft);
+        nftId = _nftId;
         beneficiary = _beneficiary;
         tokenContract = _tokenContract;
         endTime = block.timestamp + biddingTime;
@@ -64,6 +72,8 @@ contract VickreyAuction is Reencrypt {
         bidCounter = 0;
         stoppable = isStoppable;
         contractOwner = _contractOwner;
+
+        nft.transferFrom(msg.sender, address(this), nftId);
     }
 
     // Bid an `encryptedValue`.
@@ -135,13 +145,13 @@ contract VickreyAuction is Reencrypt {
     // Claim the object. Succeeds only if the caller has the highest bid.
     function claim() public onlyAfterEnd {
         ebool canClaimAsWinner = TFHE.and(TFHE.eq(highestBid, bids[msg.sender]), TFHE.not(objectClaimed));
-        require(TFHE.decrypt(canClaimAsWinner);, "You are not the highest bidder or the object has already been claimed.");
+        require(TFHE.decrypt(canClaimAsWinner), "Should be the highest bidder or the object has already been claimed.");
 
         // if the caller has the highest bid and not claimed, then claim the object
         // and set the objectClaimed to true
         objectClaimed = canClaimAsWinner;
 
-        // nftContract.transferFrom(address(this), msg.sender, nftId);
+        nft.transferFrom(address(this), msg.sender, nftId);
 
         // Update the bid to the difference between the highest and second highest bid
         // if the caller has the highest bid, otherwise keep the bid value as is

@@ -38,6 +38,8 @@ contract AuctionFactory {
     }
 
     function createVickreyAuction(
+        address _nft,
+        uint256 _nftId,
         address _beneficiary,
         EncryptedERC20 _tokenContract,
         address _contractOwner,
@@ -45,6 +47,8 @@ contract AuctionFactory {
         bool isStoppable
     ) public {
         VickreyAuction newAuction = new VickreyAuction(
+            _nft,
+            _nftId,
             _beneficiary,
             _tokenContract,
             _contractOwner,
