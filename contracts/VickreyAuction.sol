@@ -73,7 +73,7 @@ contract VickreyAuction is Reencrypt {
         stoppable = isStoppable;
         contractOwner = _contractOwner;
 
-        nft.transferFrom(msg.sender, address(this), nftId);
+        nft.safeTransferFrom(_beneficiary, address(this), nftId);
     }
 
     // Bid an `encryptedValue`.
@@ -151,7 +151,7 @@ contract VickreyAuction is Reencrypt {
         // and set the objectClaimed to true
         objectClaimed = canClaimAsWinner;
 
-        nft.transferFrom(address(this), msg.sender, nftId);
+        nft.safeTransferFrom(address(this), msg.sender, nftId);
 
         // Update the bid to the difference between the highest and second highest bid
         // if the caller has the highest bid, otherwise keep the bid value as is
