@@ -145,17 +145,18 @@ contract VickreyAuction is Reencrypt {
     // Claim the object. Succeeds only if the caller has the highest bid.
     function claim() public onlyAfterEnd {
         ebool canClaimAsWinner = TFHE.and(TFHE.eq(highestBid, bids[msg.sender]), TFHE.not(objectClaimed));
-        require(TFHE.decrypt(canClaimAsWinner), "Should be the highest bidder or the object has already been claimed.");
 
-        // if the caller has the highest bid and not claimed, then claim the object
-        // and set the objectClaimed to true
-        objectClaimed = canClaimAsWinner;
+        if (TFHE.decrypt(canClaimAsWinner)) {
+            // if the caller has the highest bid and not claimed, then claim the object
+            // and set the objectClaimed to true
+            objectClaimed = canClaimAsWinner;
 
-        nft.safeTransferFrom(address(this), msg.sender, nftId);
+            nft.safeTransferFrom(address(this), msg.sender, nftId);
 
-        // Update the bid to the difference between the highest and second highest bid
-        // if the caller has the highest bid, otherwise keep the bid value as is
-        bids[msg.sender] = TFHE.cmux(canClaimAsWinner, highestBid - secondHighestBid, bids[msg.sender]);
+            // Update the bid to the difference between the highest and second highest bid
+            // if the caller has the highest bid, otherwise keep the bid value as is
+            bids[msg.sender] = TFHE.cmux(canClaimAsWinner, highestBid - secondHighestBid, bids[msg.sender]);
+        }
 
         // call the withdraw function to transfer the bid value to the caller
         _withdraw();
