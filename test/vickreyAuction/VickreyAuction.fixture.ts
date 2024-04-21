@@ -5,6 +5,8 @@ import type { VickreyAuction } from "../../types";
 
 export async function deployVickreyAuctionFixture(
   account: Signer,
+  nftContract: AddressLike,
+  tokenId: BigNumberish,
   tokenContract: AddressLike,
   owner: AddressLike,
   biddingTime: BigNumberish,
@@ -13,7 +15,7 @@ export async function deployVickreyAuctionFixture(
   const contractFactory = await ethers.getContractFactory("VickreyAuction");
   const contract = await contractFactory
     .connect(account)
-    .deploy(account.getAddress(), tokenContract, owner, biddingTime, isStoppable);
+    .deploy(nftContract, tokenId, account.getAddress(), tokenContract, owner, biddingTime, isStoppable);
   await contract.waitForDeployment();
   return contract;
 }
