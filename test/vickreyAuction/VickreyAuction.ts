@@ -1,12 +1,11 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { VickreyAuction, VickreyAuction__factory } from "../../types";
-import { deployAuctionFactoryFixture } from "../auctionFactory/AuctionFactory.fixture";
 import { deployEncryptedERC20Fixture } from "../encryptedERC20/EncryptedERC20.fixture";
 import { createInstances } from "../instance";
 import { deployMockNFTFixture } from "../mockERC721/MockERC721.fixture";
 import { getSigners, initSigners } from "../signers";
+import { deployVickreyAuctionFixture } from "./VickreyAuction.fixture";
 
 describe("Vickrey Auction", function () {
   before(async function () {
@@ -15,6 +14,12 @@ describe("Vickrey Auction", function () {
   });
 
   beforeEach(async function () {
+    const erc721 = await deployMockNFTFixture(this.signers.alice, this.signers.alice.address);
+    this.erc721 = erc721;
+
+    this.erc721.connect(this.signers.alice).safeMint(this.signers.alice.address);
+    this.contractERC721Address = await erc721.getAddress();
+
     // Deploy ERC20 contract with Alice account
     const contractErc20 = await deployEncryptedERC20Fixture();
     this.erc20 = contractErc20;
@@ -23,46 +28,19 @@ describe("Vickrey Auction", function () {
 
     // Mint with Alice account
     const transaction = await this.erc20.mint(1000);
-    await transaction.wait();
 
-    const erc721 = await deployMockNFTFixture(this.signers.alice, this.signers.alice.address);
-    this.erc721 = erc721;
-    this.contractERC721Address = await erc721.getAddress();
-
-    const factory = await deployAuctionFactoryFixture(this.signers.alice);
-    this.factory = factory;
-    this.factoryAddress = await this.factory.getAddress();
-
-    const auctionAddress = await factory.getAuctionAddress(
+    // Deploy blind auction
+    const contractPromise = deployVickreyAuctionFixture(
+      this.signers.alice,
       this.contractERC721Address,
-      0,
-      this.signers.alice.address,
+      BigInt(0),
       this.contractERC20Address,
       this.signers.alice.address,
       1000000,
       true,
-      1,
     );
 
-    this.erc721.connect(this.signers.alice).safeMint(this.signers.alice.address);
-    // set approval for all
-    const approveTx = await this.erc721.connect(this.signers.alice).setApprovalForAll(auctionAddress, true);
-    await approveTx.wait();
-
-    // Deploy Vickrey auction
-    const contractPromise = await this.factory
-      .connect(this.signers.alice)
-      .createVickreyAuction(
-        this.contractERC721Address,
-        0,
-        this.signers.alice,
-        this.contractERC20Address,
-        this.signers.alice.address,
-        1000000,
-        true,
-      );
-
-    await contractPromise.wait();
+    const [contract] = await Promise.all([contractPromise, transaction.wait()]);
 
     // Transfer 100 tokens to Bob
     const encryptedTransferAmount = instance.alice.encrypt32(100);
@@ -72,10 +50,13 @@ describe("Vickrey Auction", function () {
     const tx2 = await this.erc20["transfer(address,bytes)"](this.signers.carol.address, encryptedTransferAmount);
     await Promise.all([tx.wait(), tx2.wait()]);
 
-    this.contractAddress = auctionAddress;
+    this.contractAddress = await contract.getAddress();
+    this.vickreyAuction = contract;
 
-    const vickreyAuction: VickreyAuction = VickreyAuction__factory.connect(this.contractAddress, this.signers.alice);
-    this.vickreyAuction = vickreyAuction;
+    const approveTx = await this.erc721
+      .connect(this.signers.alice)
+      .safeTransferFrom(this.signers.alice.address, this.contractAddress, 0);
+    await approveTx.wait();
 
     const instances = await createInstances(this.contractAddress, ethers, this.signers);
     this.instances = instances;
@@ -104,7 +85,6 @@ describe("Vickrey Auction", function () {
     await txAliceStop.wait();
 
     const tokenCarol = this.instances.carol.getPublicKey(this.contractAddress)!;
-
     const carolBidAmountCheckEnc = await this.vickreyAuction
       .connect(this.signers.carol)
       .getBid(tokenCarol.publicKey, tokenCarol.signature);
@@ -179,20 +159,20 @@ describe("Vickrey Auction", function () {
     const txAliceStop = await this.vickreyAuction.connect(this.signers.alice).stop();
     await txAliceStop.wait();
 
-    const txCarolClaim = await this.vickreyAuction.connect(this.signers.carol).claim();
-    await txCarolClaim.wait();
+    expect(
+      this.instances.bob.decrypt(
+        this.contractAddress,
+        await this.vickreyAuction.connect(this.signers.bob).objectClaimed(),
+      ),
+    ).to.equal(0);
+
     const instance = await createInstances(this.contractERC20Address, ethers, this.signers);
-    const tokenCarol = instance.carol.getPublicKey(this.contractERC20Address)!;
-
-    const encryptedBalanceCarol = await this.erc20
-      .connect(this.signers.carol)
-      .balanceOf(this.signers.carol, tokenCarol.publicKey, tokenCarol.signature);
-
-    const balanceCarol = instance.carol.decrypt(this.contractERC20Address, encryptedBalanceCarol);
-    expect(balanceCarol).to.equal(100 - 20 + 10);
 
     const txBobClaim = await this.vickreyAuction.connect(this.signers.bob).claim();
     await txBobClaim.wait();
+    const txCarolClaim = await this.vickreyAuction.connect(this.signers.carol).claim();
+    await txCarolClaim.wait();
+    const tokenCarol = instance.carol.getPublicKey(this.contractERC20Address)!;
 
     const tokenBob = instance.bob.getPublicKey(this.contractERC20Address)!;
     const encryptedBalanceBob = await this.erc20
@@ -201,6 +181,23 @@ describe("Vickrey Auction", function () {
 
     const balanceBob = instance.bob.decrypt(this.contractERC20Address, encryptedBalanceBob);
     expect(balanceBob).to.equal(100);
+
+    const encryptedBalanceCarol = await this.erc20
+      .connect(this.signers.carol)
+      .balanceOf(this.signers.carol, tokenCarol.publicKey, tokenCarol.signature);
+
+    const balanceCarol = instance.carol.decrypt(this.contractERC20Address, encryptedBalanceCarol);
+    expect(balanceCarol).to.equal(100 - 20 + 10);
+
+    // Check the owner of the NFT
+    expect(await this.erc721.ownerOf(0)).to.equal(this.signers.carol.address);
+    expect(await this.erc721.ownerOf(0)).to.not.equal(this.signers.bob.address);
+    expect(
+      this.instances.carol.decrypt(
+        this.contractAddress,
+        await this.vickreyAuction.connect(this.signers.carol).objectClaimed(),
+      ),
+    ).to.equal(1);
   });
 
   it("should Carol won the auction", async function () {
@@ -230,11 +227,11 @@ describe("Vickrey Auction", function () {
     const txAliceStop = await this.vickreyAuction.connect(this.signers.alice).stop();
     await txAliceStop.wait();
 
+    const txAuctionEnd = await this.vickreyAuction.connect(this.signers.carol).auctionEnd();
+    await txAuctionEnd.wait();
+
     const txCarolClaim = await this.vickreyAuction.connect(this.signers.carol).claim();
     await txCarolClaim.wait();
-
-    const txCarolWithdraw = await this.vickreyAuction.connect(this.signers.carol).auctionEnd();
-    await txCarolWithdraw.wait();
 
     const instance = await createInstances(this.contractERC20Address, ethers, this.signers);
     const tokenAlice = instance.alice.getPublicKey(this.contractERC20Address)!;
