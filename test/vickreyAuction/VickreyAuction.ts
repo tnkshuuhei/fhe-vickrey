@@ -53,10 +53,11 @@ describe("Vickrey Auction", function () {
     this.contractAddress = await contract.getAddress();
     this.vickreyAuction = contract;
 
-    const approveTx = await this.erc721
+    // Transfer the NFT to the auction contract
+    const transferTx = await this.erc721
       .connect(this.signers.alice)
       .safeTransferFrom(this.signers.alice.address, this.contractAddress, 0);
-    await approveTx.wait();
+    await transferTx.wait();
 
     const instances = await createInstances(this.contractAddress, ethers, this.signers);
     this.instances = instances;
@@ -124,12 +125,14 @@ describe("Vickrey Auction", function () {
     const tokenCarol = this.instances.carol.getPublicKey(this.contractAddress)!;
     const tokenBob = this.instances.bob.getPublicKey(this.contractAddress)!;
 
+    // Check if Carol has the highest bid
     const carolHighestBidEnc = await this.vickreyAuction
       .connect(this.signers.carol)
       .doIHaveHighestBid(tokenCarol.publicKey, tokenCarol.signature);
     const carolHighestBidDec = this.instances.carol.decrypt(this.contractAddress, carolHighestBidEnc);
     expect(carolHighestBidDec).to.equal(1);
 
+    // Check if Bob does not have the highest bid
     const bobHighestBidEnc = await this.vickreyAuction
       .connect(this.signers.bob)
       .doIHaveHighestBid(tokenBob.publicKey, tokenBob.signature);
@@ -159,6 +162,7 @@ describe("Vickrey Auction", function () {
     const txAliceStop = await this.vickreyAuction.connect(this.signers.alice).stop();
     await txAliceStop.wait();
 
+    // check if the object is not claimed yet
     expect(
       this.instances.bob.decrypt(
         this.contractAddress,
@@ -179,6 +183,8 @@ describe("Vickrey Auction", function () {
       .connect(this.signers.bob)
       .balanceOf(this.signers.bob, tokenBob.publicKey, tokenBob.signature);
 
+    // Decrypt the balance
+    // Bob should have his bid amount back
     const balanceBob = instance.bob.decrypt(this.contractERC20Address, encryptedBalanceBob);
     expect(balanceBob).to.equal(100);
 
@@ -186,12 +192,16 @@ describe("Vickrey Auction", function () {
       .connect(this.signers.carol)
       .balanceOf(this.signers.carol, tokenCarol.publicKey, tokenCarol.signature);
 
+    // Decrypt the balance
+    // The Carol's balance should be (previous balance - bid amount + (bid amount - second highest bid amount))
     const balanceCarol = instance.carol.decrypt(this.contractERC20Address, encryptedBalanceCarol);
     expect(balanceCarol).to.equal(100 - 20 + 10);
 
     // Check the owner of the NFT
     expect(await this.erc721.ownerOf(0)).to.equal(this.signers.carol.address);
     expect(await this.erc721.ownerOf(0)).to.not.equal(this.signers.bob.address);
+
+    // check if the object is claimed
     expect(
       this.instances.carol.decrypt(
         this.contractAddress,
@@ -241,6 +251,8 @@ describe("Vickrey Auction", function () {
       tokenAlice.signature,
     );
 
+    // Decrypt the balance
+    // Alice's balance should be (previous balance - transfered amount - transfered amount + second highest bid amount)
     const balanceAlice = instance.alice.decrypt(this.contractERC20Address, encryptedBalanceAlice);
     expect(balanceAlice).to.equal(1000 - 100 - 100 + 10);
   });
