@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 
 import "./BlindAuction.sol";
 import "./VickreyAuction.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract AuctionFactory {
     address[] public auctions;
@@ -17,11 +16,6 @@ contract AuctionFactory {
 
     constructor() {
         emit FactoryCreated(address(this));
-    }
-
-    enum AuctionType {
-        BlindAuction,
-        VickreyAuction
     }
 
     function createBlindAuction(
@@ -44,55 +38,26 @@ contract AuctionFactory {
     }
 
     function createVickreyAuction(
-        ERC721 _nft,
+        address _nft,
         uint256 _nftId,
         address _beneficiary,
         EncryptedERC20 _tokenContract,
         address _contractOwner,
         uint biddingTime,
         bool isStoppable
-    ) public returns (address newAuction) {
-        newAuction = getAuctionAddress(
+    ) public {
+        VickreyAuction newAuction = new VickreyAuction(
             _nft,
             _nftId,
             _beneficiary,
             _tokenContract,
             _contractOwner,
             biddingTime,
-            isStoppable,
-            AuctionType.VickreyAuction
+            isStoppable
         );
-
-        auctions.push(newAuction);
+        auctions.push(address(newAuction));
+        vickreyAuctions.push(newAuction);
         emit AuctionCreated(address(newAuction), msg.sender, "VickreyAuction");
-        return newAuction;
-    }
-
-    // function that returns the auction address deployed by create2
-    function getAuctionAddress(
-        ERC721 _nft,
-        uint256 _nftId,
-        address _beneficiary,
-        EncryptedERC20 _tokenContract,
-        address _contractOwner,
-        uint biddingTime,
-        bool isStoppable,
-        AuctionType auctionType
-    ) public view returns (address) {
-        bytes memory bytecode = type(VickreyAuction).creationCode;
-        bytes32 salt = keccak256(
-            abi.encodePacked(
-                _nft,
-                _nftId,
-                _beneficiary,
-                _tokenContract,
-                _contractOwner,
-                biddingTime,
-                isStoppable,
-                auctionType
-            )
-        );
-        return address(uint160(uint256(keccak256(abi.encodePacked(bytecode, salt, address(this))))));
     }
 
     function getAuctions() public view returns (address[] memory) {
