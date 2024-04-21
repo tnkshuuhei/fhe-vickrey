@@ -5,12 +5,17 @@ pragma solidity ^0.8.20;
 import "fhevm/lib/TFHE.sol";
 import "fhevm/abstracts/Reencrypt.sol";
 import "./EncryptedERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract VickreyAuction is Reencrypt {
+contract VickreyAuction is Reencrypt, IERC721Receiver {
     uint public endTime;
 
     // the person get the highest bid after the auction ends
     address public beneficiary;
+
+    IERC721 public nft;
+    uint256 public nftId;
 
     // Current highest bid.
     euint32 internal highestBid;
@@ -47,15 +52,21 @@ contract VickreyAuction is Reencrypt {
     // It cannot be called after `time`.
     error TooLate(uint time);
 
+    error NotNFTTransfered(address tokenAddress, uint256 tokenId);
+
     event AuctionEnded(euint32 indexed highestBid, euint32 indexed secondHighestBid);
 
     constructor(
+        address _nft,
+        uint256 _nftId,
         address _beneficiary,
         EncryptedERC20 _tokenContract,
         address _contractOwner,
         uint biddingTime,
         bool isStoppable
     ) {
+        nft = IERC721(_nft);
+        nftId = _nftId;
         beneficiary = _beneficiary;
         tokenContract = _tokenContract;
         endTime = block.timestamp + biddingTime;
@@ -107,6 +118,11 @@ contract VickreyAuction is Reencrypt {
     // Returns the user bid
     function stop() public onlyContractOwner {
         require(stoppable);
+
+        // revert if the nft has not been transferred to the contract
+        if (nft.ownerOf(nftId) != address(this)) {
+            revert NotNFTTransfered(address(nft), nftId);
+        }
         manuallyStopped = true;
     }
 
@@ -127,6 +143,11 @@ contract VickreyAuction is Reencrypt {
     function auctionEnd() public onlyAfterEnd {
         require(!tokenTransferred);
 
+        // revert if the nft has not been transferred to the contract
+        if (nft.ownerOf(nftId) != address(this)) {
+            revert NotNFTTransfered(address(nft), nftId);
+        }
+
         tokenTransferred = true;
         tokenContract.transfer(beneficiary, secondHighestBid);
         emit AuctionEnded(highestBid, secondHighestBid);
@@ -134,18 +155,19 @@ contract VickreyAuction is Reencrypt {
 
     // Claim the object. Succeeds only if the caller has the highest bid.
     function claim() public onlyAfterEnd {
-        ebool canClaim = TFHE.and(TFHE.le(highestBid, bids[msg.sender]), TFHE.not(objectClaimed));
+        ebool canClaimAsWinner = TFHE.and(TFHE.eq(highestBid, bids[msg.sender]), TFHE.not(objectClaimed));
 
-        // if the caller has the highest bid and not claimed, then claim the object
-        // and set the objectClaimed to true
-        objectClaimed = canClaim;
-        // TODO: transfer token or NFT or something to the winner
+        if (TFHE.decrypt(canClaimAsWinner)) {
+            // if the caller has the highest bid and not claimed, then claim the object
+            // and set the objectClaimed to true
+            objectClaimed = canClaimAsWinner;
 
+            nft.safeTransferFrom(address(this), msg.sender, nftId);
+        }
         // Update the bid to the difference between the highest and second highest bid
         // if the caller has the highest bid, otherwise keep the bid value as is
-        bids[msg.sender] = TFHE.cmux(canClaim, highestBid - secondHighestBid, bids[msg.sender]);
-
-        // call the withdraw function to transfer the bid value to the caller
+        bids[msg.sender] = TFHE.cmux(canClaimAsWinner, highestBid - secondHighestBid, bids[msg.sender]);
+        // If the caller does not have the highest bid, then withdraw the bid
         _withdraw();
     }
 
@@ -176,5 +198,11 @@ contract VickreyAuction is Reencrypt {
     modifier onlyContractOwner() {
         require(msg.sender == contractOwner);
         _;
+    }
+
+    /* IERC721Receiver function */
+    /// @inheritdoc IERC721Receiver
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 }
