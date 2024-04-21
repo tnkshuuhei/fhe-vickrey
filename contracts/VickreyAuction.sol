@@ -6,8 +6,9 @@ import "fhevm/lib/TFHE.sol";
 import "fhevm/abstracts/Reencrypt.sol";
 import "./EncryptedERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract VickreyAuction is Reencrypt {
+contract VickreyAuction is Reencrypt, IERC721Receiver {
     uint public endTime;
 
     // the person get the highest bid after the auction ends
@@ -51,6 +52,8 @@ contract VickreyAuction is Reencrypt {
     // It cannot be called after `time`.
     error TooLate(uint time);
 
+    error NotNFTTransfered(address tokenAddress, uint256 tokenId);
+
     event AuctionEnded(euint32 indexed highestBid, euint32 indexed secondHighestBid);
 
     constructor(
@@ -72,8 +75,6 @@ contract VickreyAuction is Reencrypt {
         bidCounter = 0;
         stoppable = isStoppable;
         contractOwner = _contractOwner;
-
-        nft.safeTransferFrom(_beneficiary, address(this), nftId);
     }
 
     // Bid an `encryptedValue`.
@@ -117,6 +118,11 @@ contract VickreyAuction is Reencrypt {
     // Returns the user bid
     function stop() public onlyContractOwner {
         require(stoppable);
+
+        // revert if the nft has not been transferred to the contract
+        if (nft.ownerOf(nftId) != address(this)) {
+            revert NotNFTTransfered(address(nft), nftId);
+        }
         manuallyStopped = true;
     }
 
@@ -136,6 +142,11 @@ contract VickreyAuction is Reencrypt {
     // Transfer token to beneficiary
     function auctionEnd() public onlyAfterEnd {
         require(!tokenTransferred);
+
+        // revert if the nft has not been transferred to the contract
+        if (nft.ownerOf(nftId) != address(this)) {
+            revert NotNFTTransfered(address(nft), nftId);
+        }
 
         tokenTransferred = true;
         tokenContract.transfer(beneficiary, secondHighestBid);
@@ -187,5 +198,11 @@ contract VickreyAuction is Reencrypt {
     modifier onlyContractOwner() {
         require(msg.sender == contractOwner);
         _;
+    }
+
+    /* IERC721Receiver function */
+    /// @inheritdoc IERC721Receiver
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 }
