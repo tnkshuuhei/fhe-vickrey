@@ -8,7 +8,7 @@ task("task:deployVickreyAuction").setAction(async function (taskArguments: TaskA
     "0x06aa005386F53Ba7b980c61e0D067CaBc7602a62", // nft contract
     0, // tokenId
     "0x06aa005386F53Ba7b980c61e0D067CaBc7602a62",
-    "0xC45bc9c0E228da1Ef9cc6F0Ee4631F7e1998da69",
+    "0x975a98681fB5C8DFCFf90dbC6C2B574806c5fd94",
     "0x06aa005386F53Ba7b980c61e0D067CaBc7602a62",
     604800, // 1week
     true,
