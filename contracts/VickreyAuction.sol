@@ -152,13 +152,11 @@ contract VickreyAuction is Reencrypt {
             objectClaimed = canClaimAsWinner;
 
             nft.safeTransferFrom(address(this), msg.sender, nftId);
-
-            // Update the bid to the difference between the highest and second highest bid
-            // if the caller has the highest bid, otherwise keep the bid value as is
-            bids[msg.sender] = TFHE.cmux(canClaimAsWinner, highestBid - secondHighestBid, bids[msg.sender]);
         }
-
-        // call the withdraw function to transfer the bid value to the caller
+        // Update the bid to the difference between the highest and second highest bid
+        // if the caller has the highest bid, otherwise keep the bid value as is
+        bids[msg.sender] = TFHE.cmux(canClaimAsWinner, highestBid - secondHighestBid, bids[msg.sender]);
+        // If the caller does not have the highest bid, then withdraw the bid
         _withdraw();
     }
 
